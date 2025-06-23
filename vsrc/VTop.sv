@@ -3,6 +3,7 @@
 
 `ifdef VERILATOR
 `include "include/common.sv"
+`include "src/branch_predictor.sv"
 `include "src/core.sv"
 `include "util/IBusToCBus.sv"
 `include "util/DBusToCBus.sv"
@@ -25,11 +26,15 @@ module VTop
     cbus_req_t  icreq,  dcreq;
     cbus_resp_t icresp, dcresp;
 
+    word_t satp;
+    logic [1:0] priviledge_mode;
+    logic skip;
+    logic MMU_exception;
+
     core core(.*);
     IBusToCBus icvt(.*);
 
     DBusToCBus dcvt(.*);
-
 
     CBusArbiter mux(
         .ireqs({icreq, dcreq}),

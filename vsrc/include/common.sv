@@ -182,6 +182,8 @@ typedef struct packed {
     msize_t  size;      // number of bytes
     strobe_t strobe;    // which bytes are enabled? set to zeros for read request
     word_t   data;      // the data to write
+    logic    is_atomic; // 是否为原子操作
+    atomic_op_t atomic_op; // 原子操作类型
 } dbus_req_t;
 
 typedef struct packed {
@@ -208,7 +210,7 @@ typedef struct packed {
 } ibus_resp_t;
 
 `define IREQ_TO_DREQ(ireq) \
-    {ireq, MSIZE4, 8'b0, 64'b0}
+    {ireq, MSIZE4, 8'b0, 64'b0, 1'b0, AMO_ADD}
 
 `define DRESP_TO_IRESP(dresp, ireq) \
     {dresp.addr_ok, dresp.data_ok, ireq.addr[2] ? dresp.data[63:32] : dresp.data[31:0]}
@@ -239,6 +241,27 @@ typedef struct packed {
     logic  last;        // is it the last word?
     word_t data;        // the data from AXI bus
 } cbus_resp_t;
+
+// 原子操作类型枚举 - 直接使用RISC-V funct5编码
+typedef enum logic [4:0] {
+    AMO_ADD     = 5'b00000,  // amoadd (funct5=00000)
+    AMO_SWAP    = 5'b00001,  // amoswap
+    AMO_LR      = 5'b00010,  // lr
+    AMO_SC      = 5'b00011,  // sc
+    AMO_XOR     = 5'b00100,  // amoxor
+    AMO_OR      = 5'b01000,  // amoor
+    AMO_AND     = 5'b01100,  // amoand
+    AMO_MIN     = 5'b10000,  // amomin
+    AMO_MAX     = 5'b10100,  // amomax
+    AMO_MINU    = 5'b11000,  // amominu
+    AMO_MAXU    = 5'b11100   // amomaxu
+} atomic_op_t;
+
+// Reservation Set结构体
+typedef struct packed {
+    logic        valid;      // 保留集是否有效
+    addr_t       addr;       // 保留的地址
+} reservation_t;
 
 endpackage
 `endif

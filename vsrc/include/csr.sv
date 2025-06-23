@@ -39,6 +39,56 @@ package csr_pkg;
   parameter u64 MEDELEG_MASK = 64'h0;
   parameter u64 MIDELEG_MASK = 64'h0;
 
+  // mstatus 位域掩码定义
+  parameter u64 MSTATUS_MPP_MASK  = 64'h0000_0000_0000_1800;  // MPP [12:11]
+  parameter u64 MSTATUS_MPIE_MASK = 64'h0000_0000_0000_0080;  // MPIE [7]
+  parameter u64 MSTATUS_MIE_MASK  = 64'h0000_0000_0000_0008;  // MIE [3]
+  parameter u64 MSTATUS_FS_MASK   = 64'h0000_0000_0000_6000;  // FS [14:13]
+  parameter u64 MSTATUS_XS_MASK   = 64'h0000_0000_0001_8000;  // XS [16:15]
+  parameter u64 MSTATUS_MPRV_MASK = 64'h0000_0000_0002_0000;  // MPRV [17]
+  parameter u64 MSTATUS_SUM_MASK  = 64'h0000_0000_0004_0000;  // SUM [18]
+  parameter u64 MSTATUS_MXR_MASK  = 64'h0000_0000_0008_0000;  // MXR [19]
+  parameter u64 MSTATUS_TVM_MASK  = 64'h0000_0000_0010_0000;  // TVM [20]
+  parameter u64 MSTATUS_TW_MASK   = 64'h0000_0000_0020_0000;  // TW [21]
+  parameter u64 MSTATUS_TSR_MASK  = 64'h0000_0000_0040_0000;  // TSR [22]
+
+  // 组合掩码
+  parameter u64 MSTATUS_WRITABLE_MASK = 
+    MSTATUS_MPP_MASK  | MSTATUS_MPIE_MASK | MSTATUS_MIE_MASK  |
+    MSTATUS_FS_MASK   | MSTATUS_XS_MASK   | MSTATUS_MPRV_MASK |
+    MSTATUS_SUM_MASK  | MSTATUS_MXR_MASK  | MSTATUS_TVM_MASK  |
+    MSTATUS_TW_MASK   | MSTATUS_TSR_MASK;
+
+  parameter u2 PRIVILEGE_MODE = 2'b11;
+  parameter u2 USER_MODE = 2'b00;
+
+  // PMP 相关常量定义
+  parameter u64 PMPADDR_MASK = 64'h3FFFFFFFFFFF;  // PMP地址掩码 (54位物理地址)
+  parameter u8 PMPCFG_MASK = 8'h9F;               // PMP配置掩码 (R=1, W=2, X=4, A=3<<3, L=7)
+  
+  // PMP配置位定义
+  parameter u8 PMP_R = 8'h01;     // 读权限
+  parameter u8 PMP_W = 8'h02;     // 写权限  
+  parameter u8 PMP_X = 8'h04;     // 执行权限
+  parameter u8 PMP_A_OFF = 8'h00; // 地址匹配关闭
+  parameter u8 PMP_A_TOR = 8'h08; // 顶部范围匹配
+  parameter u8 PMP_A_NA4 = 8'h10; // 自然对齐4字节
+  parameter u8 PMP_A_NAPOT = 8'h18; // 自然对齐2的幂次
+  parameter u8 PMP_L = 8'h80;     // 锁定位
+
+  // PMP访问类型枚举
+  typedef enum logic [1:0] {
+    PMP_ACCESS_READ  = 2'b00,
+    PMP_ACCESS_WRITE = 2'b01,
+    PMP_ACCESS_EXEC  = 2'b10
+  } pmp_access_type_t;
+
+  // PMP检查结果结构
+  typedef struct packed {
+    logic allowed;      // 是否允许访问
+    logic fault;        // 是否产生访问错误
+  } pmp_check_result_t;
+
   typedef struct packed {
     u1 sd;
     logic [MXLEN-2-36:0] wpri1;
@@ -71,6 +121,53 @@ package csr_pkg;
     u16 asid;
     u44 ppn;
   } satp_t;
+
+  typedef enum logic [1:0] {
+    INSTR_MISALIGN,
+    LOAD_MISALIGN,
+    STORE_MISALIGN,
+    DEFAULT
+  } Misalign_type;
+
+  typedef struct packed {
+    u1 valid;
+    Misalign_type misalign_type;
+    u64 addr;
+    u64 pc;
+  } Misalign;
+
+    typedef enum logic [3:0] {
+    EXC_NONE          = 4'd0,
+    EXC_INST_ADDR_MISALIGNED = 4'd1,
+    EXC_INST_ACCESS_FAULT = 4'd2,
+    EXC_ILLEGAL_INST  = 4'd3,
+    EXC_BREAKPOINT    = 4'd4,
+    EXC_LOAD_ADDR_MISALIGNED = 4'd5,
+    EXC_LOAD_ACCESS_FAULT = 4'd6,
+    EXC_STORE_ADDR_MISALIGNED = 4'd7,
+    EXC_STORE_ACCESS_FAULT = 4'd8,
+    EXC_ECALL_U       = 4'd9,
+    EXC_ECALL_M       = 4'd11,
+    EXC_INST_PAGE_FAULT = 4'd12,
+    EXC_LOAD_PAGE_FAULT = 4'd13,
+    EXC_STORE_PAGE_FAULT = 4'd14
+  } exception_code_t;
+
+  typedef enum logic [3:0] {
+    SWINTPROCESSING,
+    TRINTPROCESSING,
+    EXINTPROCESSING,
+    TRAPDEFAULT
+  } interrupt_trap_cause_t;
+
+  typedef struct packed {
+    u1 valid;
+    interrupt_trap_cause_t trap_cause;
+    u64 pc;
+  } interrupt_trap_t;
+
+  
+  
 endpackage
 
 `endif

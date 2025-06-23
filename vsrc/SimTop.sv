@@ -1,5 +1,6 @@
 `ifdef VERILATOR
 `include "include/common.sv"
+`include "src/branch_predictor.sv"
 `include "src/core.sv"
 `include "util/IBusToCBus.sv"
 `include "util/DBusToCBus.sv"
@@ -30,8 +31,14 @@ module SimTop import common::*;(
     cbus_req_t  icreq,  dcreq;
     cbus_resp_t icresp, dcresp;
 
+    word_t satp;
+    logic [1:0] priviledge_mode;
+    logic skip;
+    logic MMU_exception;
+
     core core(
-      .clk(clock), .reset, .ireq, .iresp, .dreq, .dresp, .trint, .swint, .exint
+      .clk(clock), .reset, .ireq, .iresp, .dreq, .dresp, .trint, .swint, .exint,
+      .satp(satp), .priviledge_mode(priviledge_mode), .skip(skip), .MMU_exception(MMU_exception)
     );
 
     IBusToCBus icvt(.*);
